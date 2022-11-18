@@ -1,24 +1,44 @@
 \m4_TLV_version 1d: tl-x.org
 \SV
-   m4_makerchip_module   // (Expanded in Nav-TLV pane.)
 
-\TLV ripple_carry_adder(#_width, $_in1, $_in2, $_out, /_top)
-   /slice[#_width-1:0]
-      $in1 = /_top$_in1[#slice];
-      $in2 = /_top$_in2[#slice];
-      $carry_in = (#slice == 0) ? 1'b0 : /_top/slice[(#slice - 1) % #_width]$carry_out;
-      $out = $in1 ^ $in2 ^ $carry_in;
-      $carry_out = ($in1 + $in2 + $carry_in) > 2'b1;
-   $_out[#_width-1:0] = /slice[*]$out;
-   
+m4_makerchip_module
+m4_include_url(['https://raw.githubusercontent.com/stevehoover/tlv_flow_lib/221c93b3603bb4c72d3b024b3ec410e48f60e199/arrays.tlv'])
+
 \TLV
-   m4_define(['m4_width'], 32)
-   $addend1[m4_width-1:0] = *cyc_cnt[m4_width-1:0];
-   $addend2[m4_width-1:0] = *cyc_cnt[m4_width-1:0] + 8'b1;
-   m4+ripple_carry_adder(m4_width, $addend1, $addend2, $sum, /top)
+   //$reset = *reset;
+
+   //--------------------------------------------------
+   // Stimulus
+   //
    
+   // Explicit random inputs.
+   
+   m4_define_hier(['M4_ENTRY'], 4)
+   |wr
+      @0
+         // The array hierarchy (to declare ranges)
+         /M4_ENTRY_HIER
+         
+         m4_rand($wr_en, 0, 0)
+         ?$wr_en
+            m4_rand($entry, M4_ENTRY_INDEX_MAX, 0)  // entry to write into
+            m4_rand($data, 7, 0)  // data to write
+   |rd
+      @1
+         m4_rand($rd_en, 0, 0)
+         ?$rd_en
+            m4_rand($entry, M4_ENTRY_INDEX_MAX, 0)  // entry to read from
+         
+   
+   //----------------------------------------------------
+   // The array
+
+   m4+array1r1w(/top, /entry, |wr, @0, $wr_en, $entry, |rd, @1, $rd_en, $entry, $data[7:0], )
+
+
    // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = *cyc_cnt > 40;
+   *passed = *cyc_cnt > 50;
    *failed = 1'b0;
+
 \SV
    endmodule
